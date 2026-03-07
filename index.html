@@ -56,48 +56,7 @@ body {
 body.hovering #cursor { width: 24px; height: 24px; background: var(--gold-light); }
 body.hovering #cursor-ring { width: 56px; height: 56px; border-color: var(--gold); }
 
-/* ===== LOADING SCREEN ===== */
-#loading {
-  position: fixed;
-  inset: 0;
-  background: var(--dark);
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  transition: opacity 0.8s ease, visibility 0.8s ease;
-}
-#loading.hidden { opacity: 0; visibility: hidden; }
 
-.loading-logo {
-  animation: logoFloat 2s ease infinite;
-}
-@keyframes logoFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-.loading-bar-wrap {
-  width: 240px;
-  height: 1px;
-  background: rgba(212,168,75,0.2);
-  position: relative;
-  overflow: hidden;
-}
-.loading-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--caramel), var(--gold-light));
-  width: 0%;
-  transition: width 0.4s ease;
-}
-.loading-text {
-  font-size: 0.65rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--sand);
-}
 
 /* ===== NAV ===== */
 nav {
@@ -751,19 +710,6 @@ footer {
 .reveal-delay-2 { transition-delay: 0.2s; }
 .reveal-delay-3 { transition-delay: 0.3s; }
 
-/* Menu loading placeholder */
-.menu-loading {
-  text-align: center;
-  padding: 4rem;
-  grid-column: 1 / -1;
-}
-.menu-loading p {
-  font-family: 'Cormorant Garamond', serif;
-  font-style: italic;
-  font-size: 1.2rem;
-  color: var(--caramel);
-}
-
 </style>
 </head>
 <body>
@@ -773,21 +719,6 @@ footer {
 <div id="cursor-ring"></div>
 
 <!-- Loading screen -->
-<div id="loading">
-  <div class="loading-logo">
-    <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="90" cy="90" r="85" stroke="rgba(212,168,75,0.15)" stroke-width="1"/>
-      <circle cx="90" cy="90" r="80" stroke="rgba(212,168,75,0.08)" stroke-width="0.5"/>
-      <text x="90" y="112" text-anchor="middle" font-family="Cormorant Garamond, serif" font-style="italic" font-size="80" fill="#D4A84B" opacity="0.95">S</text>
-      <text x="90" y="136" text-anchor="middle" font-family="Josefin Sans, sans-serif" font-size="9" fill="#C8B090" letter-spacing="6" transform="translate(-5,0)">SLICE CRAFT</text>
-      <text x="90" y="150" text-anchor="middle" font-family="Josefin Sans, sans-serif" font-size="7" fill="rgba(200,176,144,0.6)" letter-spacing="5">BAKERY</text>
-    </svg>
-  </div>
-  <div class="loading-bar-wrap">
-    <div class="loading-bar-fill" id="loadingBar"></div>
-  </div>
-  <div class="loading-text" id="loadingText">Preparing your menu…</div>
-</div>
 
 <!-- PROMO BANNER -->
 <div id="promoBanner" style="display:none;background:var(--gold);color:var(--dark);text-align:center;padding:10px 16px;font-family:'Josefin Sans',sans-serif;font-size:13px;letter-spacing:1.5px;font-weight:600;position:relative;z-index:200;">
@@ -947,11 +878,7 @@ footer {
     <button class="filter-pill" data-cat="sans_rival">Sans Rival</button>
   </div>
 
-  <div class="menu-grid" id="menuGrid">
-    <div class="menu-loading">
-      <p>Extracting menu from our board…</p>
-    </div>
-  </div>
+  <div class="menu-grid" id="menuGrid"></div>
 </section>
 
 <!-- CONTACT -->
@@ -1192,93 +1119,40 @@ document.addEventListener('mousemove', e => {
   });
 });
 
-// ===== FETCH MENU FROM AI =====
-async function fetchMenu() {
-  const bar = document.getElementById('loadingBar');
-  const loadingText = document.getElementById('loadingText');
-  
-  bar.style.width = '15%';
-  
-  const storeImgs = STORE_MENU_IMGS.slice(0, 8); // use 8 for better coverage
-  const imageContent = [
-    {
-      type: 'text',
-      text: `You are analyzing menu board photos from a Filipino artisan bakery called "Slice Craft Bakery". 
-Extract ALL menu items visible. Return ONLY a JSON array, no markdown, no explanation.
-Each item: {"name":"...", "price":"...", "category":"cakes_pies|cheesecake|tarts|sourdough|drinks|sans_rival", "description":"short appetizing 1-sentence description"}
-Prices are in Philippine Pesos (₱). If price not visible, estimate based on item type (cakes 350-600, drinks 120-180, sourdough 250-400, tarts 150-250).
-Make descriptions warm and appetizing. Return 20-35 items if possible.`
-    },
-    ...storeImgs.map(b64 => ({
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: b64 }
-    }))
-  ];
-  
-  bar.style.width = '40%';
-  loadingText.textContent = 'Reading the menu board…';
-  
+// ===== DEFAULT MENU =====
+const DEFAULT_MENU = [
+  { name: 'Classic Sourdough', price: '280', category: 'sourdough', description: 'Rustic, tangy loaf with a crispy crust and open crumb — baked fresh every morning.' },
+  { name: 'Rosemary Focaccia', price: '220', category: 'sourdough', description: 'Pillowy Italian flatbread topped with fresh rosemary and flaky sea salt.' },
+  { name: 'Basque Cheesecake', price: '380', category: 'cheesecake', description: 'Burnt and beautiful, with a silky center and deep caramelized top.' },
+  { name: 'Blueberry Cheesecake', price: '350', category: 'cheesecake', description: 'Velvety cream cheese filling piled with fresh blueberry compote.' },
+  { name: 'Chocolate Ganache Cake', price: '580', category: 'cakes_pies', description: 'Layers of moist chocolate sponge wrapped in a glossy dark ganache.' },
+  { name: 'Strawberry Shortcake', price: '520', category: 'cakes_pies', description: 'Fluffy chiffon layered with fresh cream and seasonal strawberries.' },
+  { name: 'Egg Tart', price: '120', category: 'tarts', description: 'Buttery pastry shell holding a lightly sweetened silky custard.' },
+  { name: 'Fruit Tart', price: '180', category: 'tarts', description: 'Crisp tart shell filled with pastry cream and topped with fresh seasonal fruit.' },
+  { name: 'Sans Rival', price: '450', category: 'sans_rival', description: 'Classic Filipino dessert — dacquoise layers with cashews and buttercream.' },
+  { name: 'Iced Matcha Latte', price: '155', category: 'drinks', description: 'Ceremonial grade matcha whisked smooth over milk and ice.' },
+  { name: 'Cold Brew Coffee', price: '145', category: 'drinks', description: '24-hour cold steeped for a smooth, rich, low-acid brew.' },
+  { name: 'Strawberry Lemonade', price: '130', category: 'drinks', description: 'Fresh-squeezed lemon with house-made strawberry syrup.' },
+];
+
+// ===== INIT MENU (instant — loads from admin saved data or defaults) =====
+function initMenu() {
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: imageContent }]
-      })
-    });
-    
-    bar.style.width = '75%';
-    loadingText.textContent = 'Building your menu…';
-    
-    const data = await resp.json();
-    let text = data.content.map(i => i.text || '').join('');
-    let clean = text.replace(/```json|```/g, '').trim();
-    
-    if (!clean.endsWith(']')) {
-      const last = clean.lastIndexOf('},');
-      if (last > 0) clean = clean.substring(0, last + 1) + ']';
-      else clean += ']';
-    }
-    
-    allMenuItems = JSON.parse(clean);
-    bar.style.width = '100%';
-    
-    setTimeout(() => {
-      document.getElementById('loading').classList.add('hidden');
-      renderMenu(allMenuItems);
-    }, 500);
-    
-  } catch (err) {
-    console.error('Menu extraction failed:', err);
-    // Fallback menu
-    allMenuItems = [
-      { name: 'Classic Sourdough', price: '280', category: 'sourdough', description: 'Rustic, tangy loaf with a crispy crust and open crumb — baked fresh every morning.' },
-      { name: 'Rosemary Focaccia', price: '220', category: 'sourdough', description: 'Pillowy Italian flatbread topped with fresh rosemary and flaky sea salt.' },
-      { name: 'Basque Cheesecake', price: '380', category: 'cheesecake', description: 'Burnt and beautiful, with a silky center and deep caramelized top.' },
-      { name: 'Blueberry Cheesecake', price: '350', category: 'cheesecake', description: 'Velvety cream cheese filling piled with fresh blueberry compote.' },
-      { name: 'Chocolate Ganache Cake', price: '580', category: 'cakes_pies', description: 'Layers of moist chocolate sponge wrapped in a glossy dark ganache.' },
-      { name: 'Strawberry Shortcake', price: '520', category: 'cakes_pies', description: 'Fluffy chiffon layered with fresh cream and seasonal strawberries.' },
-      { name: 'Egg Tart', price: '120', category: 'tarts', description: 'Buttery pastry shell holding a lightly sweetened silky custard.' },
-      { name: 'Fruit Tart', price: '180', category: 'tarts', description: 'Crisp tart shell filled with pastry cream and topped with fresh seasonal fruit.' },
-      { name: 'Sans Rival', price: '450', category: 'sans_rival', description: 'Classic Filipino dessert — dacquoise layers with cashews and buttercream.' },
-      { name: 'Iced Matcha Latte', price: '155', category: 'drinks', description: 'Ceremonial grade matcha whisked smooth over milk and ice.' },
-      { name: 'Cold Brew Coffee', price: '145', category: 'drinks', description: '24-hour cold steeped for a smooth, rich, low-acid brew.' },
-      { name: 'Strawberry Lemonade', price: '130', category: 'drinks', description: 'Fresh-squeezed lemon with house-made strawberry syrup.' },
-    ];
-    bar.style.width = '100%';
-    setTimeout(() => {
-      document.getElementById('loading').classList.add('hidden');
-      renderMenu(allMenuItems);
-    }, 500);
+    const raw = localStorage.getItem('slicecraft_admin_data');
+    const saved = raw ? JSON.parse(raw) : null;
+    allMenuItems = (saved && saved.menuItems && saved.menuItems.length > 0)
+      ? saved.menuItems
+      : DEFAULT_MENU;
+  } catch(e) {
+    allMenuItems = DEFAULT_MENU;
   }
+  renderMenu(allMenuItems);
 }
 
 // ===== INIT =====
 populateAbout();
 populateGallery();
-fetchMenu();
+initMenu();
 
 // Smooth scroll for nav links
 document.querySelectorAll('a[href^="#"]').forEach(a => {
@@ -1288,6 +1162,7 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   });
 });
+</script>
 
 <!-- ======= ADMIN PANEL ======= -->
 <style>
@@ -1908,11 +1783,10 @@ function adminSave() {
   }, 2500);
 }
 
-// On page load: apply saved data + check URL
+// On page load: apply saved data (promo banner, store info) + check URL
 document.addEventListener('DOMContentLoaded', function() {
   const saved = adminLoadData();
-  // Wait for menu to render first
-  setTimeout(() => adminApplyData(saved), 3000);
+  adminApplyData(saved);
 });
 adminCheckURL();
 </script>
