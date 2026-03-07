@@ -789,6 +789,12 @@ footer {
   <div class="loading-text" id="loadingText">Preparing your menu…</div>
 </div>
 
+<!-- PROMO BANNER -->
+<div id="promoBanner" style="display:none;background:var(--gold);color:var(--dark);text-align:center;padding:10px 16px;font-family:'Josefin Sans',sans-serif;font-size:13px;letter-spacing:1.5px;font-weight:600;position:relative;z-index:200;">
+  <span id="promoBannerText"></span>
+  <button onclick="document.getElementById('promoBanner').style.display='none'" style="background:none;border:none;cursor:pointer;position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--dark);line-height:1;">×</button>
+</div>
+
 <!-- NAV -->
 <nav id="mainNav">
   <a href="#" class="nav-logo">Slice Craft</a>
@@ -956,15 +962,15 @@ footer {
   <div class="contact-info reveal reveal-delay-3">
     <div class="info-item">
       <div class="info-label">Hours</div>
-      <div class="info-val">Tue–Sun, 8am–7pm</div>
+      <div class="info-val" id="storeHours">Tue–Sun, 8am–7pm</div>
     </div>
     <div class="info-item">
-      <div class="info-label">Follow Us</div>
-      <div class="info-val">@slicecraftbakery</div>
+      <div class="info-label">Location</div>
+      <div class="info-val" id="storeAddress">Visit us in store</div>
     </div>
     <div class="info-item">
-      <div class="info-label">Made with</div>
-      <div class="info-val">Love &amp; Intention</div>
+      <div class="info-label">Contact</div>
+      <div class="info-val" id="storePhone">@slicecraftbakery</div>
     </div>
   </div>
 </section>
@@ -1282,6 +1288,632 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   });
 });
+
+<!-- ======= ADMIN PANEL ======= -->
+<style>
+/* Admin trigger button (hidden) */
+#adminTrigger {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(30,18,8,0.5);
+  border: 1px solid rgba(212,168,75,0.2);
+  cursor: pointer;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 18px;
+  color: rgba(212,168,75,0.4);
+}
+#adminTrigger:hover { opacity: 1 !important; color: var(--gold); }
+
+/* Admin overlay */
+#adminOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,6,2,0.85);
+  z-index: 9998;
+  backdrop-filter: blur(6px);
+}
+#adminOverlay.open { display: flex; align-items: center; justify-content: center; }
+
+/* Login modal */
+#adminLogin {
+  background: #1E1208;
+  border: 1px solid rgba(212,168,75,0.3);
+  border-radius: 16px;
+  padding: 40px;
+  width: 340px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+}
+#adminLogin h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  color: var(--gold);
+  margin: 0 0 6px;
+  font-style: italic;
+}
+#adminLogin p {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(200,176,144,0.5);
+  margin: 0 0 28px;
+}
+#adminPwInput {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(212,168,75,0.25);
+  border-radius: 8px;
+  color: var(--cream);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+}
+#adminPwInput:focus { border-color: var(--gold); }
+#adminPwInput.shake {
+  animation: shake 0.4s;
+  border-color: #e55;
+}
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 60%{transform:translateX(8px)}
+}
+.admin-btn-row { display: flex; gap: 10px; }
+.admin-btn {
+  flex: 1;
+  padding: 11px;
+  border-radius: 8px;
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.admin-btn-primary { background: var(--gold); color: var(--dark); }
+.admin-btn-primary:hover { background: var(--gold-light); }
+.admin-btn-ghost { background: transparent; color: rgba(200,176,144,0.5); border: 1px solid rgba(200,176,144,0.2); }
+.admin-btn-ghost:hover { color: var(--cream); border-color: rgba(200,176,144,0.5); }
+#adminLoginError {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 11px;
+  color: #e55;
+  letter-spacing: 1px;
+  margin-top: 10px;
+  min-height: 16px;
+}
+
+/* Admin panel (post-login) */
+#adminPanel {
+  background: #1E1208;
+  border: 1px solid rgba(212,168,75,0.25);
+  border-radius: 16px;
+  width: min(820px, 96vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  display: none;
+  flex-direction: column;
+}
+#adminPanel.open { display: flex; }
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px 16px;
+  border-bottom: 1px solid rgba(212,168,75,0.15);
+  position: sticky;
+  top: 0;
+  background: #1E1208;
+  z-index: 1;
+}
+.admin-panel-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  color: var(--gold);
+  font-style: italic;
+}
+.admin-panel-close {
+  background: none;
+  border: none;
+  color: rgba(200,176,144,0.5);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.admin-panel-close:hover { color: var(--cream); }
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(212,168,75,0.1);
+  padding: 0 32px;
+}
+.admin-tab {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  color: rgba(200,176,144,0.4);
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.admin-tab:hover { color: var(--cream); }
+.admin-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.admin-body {
+  padding: 28px 32px;
+  flex: 1;
+}
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+
+/* Admin form components */
+.admin-field-group { margin-bottom: 24px; }
+.admin-label {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(200,176,144,0.6);
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.admin-input, .admin-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,168,75,0.2);
+  border-radius: 8px;
+  color: var(--cream);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.admin-input:focus, .admin-textarea:focus { border-color: var(--gold); }
+.admin-textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+
+/* Menu item list */
+.menu-admin-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.menu-admin-item {
+  display: grid;
+  grid-template-columns: 1fr 140px 140px auto auto;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(212,168,75,0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.menu-admin-item input, .menu-admin-item select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,168,75,0.2);
+  border-radius: 6px;
+  color: var(--cream);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.menu-admin-item input:focus, .menu-admin-item select:focus { border-color: var(--gold); }
+.menu-admin-item select option { background: #1E1208; }
+.menu-delete-btn {
+  background: rgba(200,50,50,0.1);
+  border: 1px solid rgba(200,50,50,0.2);
+  border-radius: 6px;
+  color: rgba(200,100,100,0.7);
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 13px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.menu-delete-btn:hover { background: rgba(200,50,50,0.25); color: #e88; }
+.admin-add-btn {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  background: rgba(212,168,75,0.08);
+  border: 1px dashed rgba(212,168,75,0.3);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+.admin-add-btn:hover { background: rgba(212,168,75,0.15); }
+
+/* Admin footer */
+.admin-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-top: 1px solid rgba(212,168,75,0.1);
+  position: sticky;
+  bottom: 0;
+  background: #1E1208;
+}
+.admin-save-status {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: rgba(200,176,144,0.4);
+  min-height: 16px;
+}
+.admin-save-status.success { color: #7dd; }
+.admin-save-btn {
+  background: var(--gold);
+  color: var(--dark);
+  border: none;
+  border-radius: 8px;
+  padding: 11px 28px;
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.admin-save-btn:hover { background: var(--gold-light); }
+
+/* Column headers for menu list */
+.menu-col-headers {
+  display: grid;
+  grid-template-columns: 1fr 140px 140px auto auto;
+  gap: 8px;
+  padding: 0 12px 6px;
+}
+.menu-col-headers span {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(200,176,144,0.35);
+  font-weight: 600;
+}
+
+/* Toggle switch */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.toggle-label {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 12px;
+  color: rgba(200,176,144,0.7);
+}
+.toggle-switch { position: relative; width: 40px; height: 22px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; bottom: 3px;
+  background: rgba(200,176,144,0.5);
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--gold); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); background: var(--dark); }
+
+/* Scrollbar styling for admin panel */
+#adminPanel::-webkit-scrollbar { width: 5px; }
+#adminPanel::-webkit-scrollbar-track { background: transparent; }
+#adminPanel::-webkit-scrollbar-thumb { background: rgba(212,168,75,0.2); border-radius: 3px; }
+</style>
+
+<!-- Admin login modal -->
+<div id="adminOverlay">
+  <div id="adminLogin">
+    <h3>Admin Access</h3>
+    <p>SLICE CRAFT BAKERY</p>
+    <input type="password" id="adminPwInput" placeholder="Enter password" autocomplete="off">
+    <div class="admin-btn-row">
+      <button class="admin-btn admin-btn-primary" onclick="adminLogin()">Enter</button>
+      <button class="admin-btn admin-btn-ghost" onclick="adminClose()">Cancel</button>
+    </div>
+    <div id="adminLoginError"></div>
+  </div>
+
+  <!-- Admin panel (shown after login) -->
+  <div id="adminPanel">
+    <div class="admin-panel-header">
+      <div class="admin-panel-title">✦ Admin Panel</div>
+      <button class="admin-panel-close" onclick="adminClose()">×</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchTab('promo')">PROMO</button>
+      <button class="admin-tab" onclick="switchTab('menu')">MENU ITEMS</button>
+      <button class="admin-tab" onclick="switchTab('hours')">HOURS &amp; INFO</button>
+    </div>
+    <div class="admin-body">
+
+      <!-- PROMO TAB -->
+      <div class="tab-section active" id="tab-promo">
+        <div class="admin-field-group">
+          <div class="toggle-row">
+            <span class="toggle-label">Show announcement banner</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="promoEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-label">BANNER MESSAGE</label>
+          <input type="text" class="admin-input" id="promoText" placeholder="e.g. 🎉 New menu items this weekend! Order now.">
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-label">PREVIEW</label>
+          <div style="background:var(--gold);color:var(--dark);text-align:center;padding:10px 16px;font-family:'Josefin Sans',sans-serif;font-size:13px;letter-spacing:1.5px;font-weight:600;border-radius:6px;min-height:38px;" id="promoPreview">Your message here</div>
+        </div>
+      </div>
+
+      <!-- MENU TAB -->
+      <div class="tab-section" id="tab-menu">
+        <p style="font-family:'Josefin Sans',sans-serif;font-size:11px;color:rgba(200,176,144,0.4);letter-spacing:1px;margin:0 0 16px;">Edit prices, names, and descriptions. Add or remove items freely.</p>
+        <div class="menu-col-headers">
+          <span>ITEM NAME</span><span>PRICE (₱)</span><span>CATEGORY</span><span>DESCRIPTION</span><span></span>
+        </div>
+        <div class="menu-admin-list" id="menuAdminList"></div>
+        <button class="admin-add-btn" onclick="adminAddItem()">+ Add New Item</button>
+      </div>
+
+      <!-- HOURS TAB -->
+      <div class="tab-section" id="tab-hours">
+        <div class="admin-field-group">
+          <label class="admin-label">STORE HOURS</label>
+          <input type="text" class="admin-input" id="adminHours" placeholder="e.g. Tue–Sun, 8am–7pm">
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-label">ADDRESS / LOCATION</label>
+          <input type="text" class="admin-input" id="adminAddress" placeholder="e.g. 123 Bakery St, Quezon City">
+        </div>
+        <div class="admin-field-group">
+          <label class="admin-label">CONTACT / SOCIAL</label>
+          <input type="text" class="admin-input" id="adminPhone" placeholder="e.g. @slicecraftbakery or 0917-123-4567">
+        </div>
+      </div>
+
+    </div>
+    <div class="admin-save-bar">
+      <div class="admin-save-status" id="adminSaveStatus"></div>
+      <button class="admin-save-btn" onclick="adminSave()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden admin trigger (bottom-right corner, visible on hover) -->
+<button id="adminTrigger" onclick="adminOpen()" title="Admin">⚙</button>
+
+<script>
+// ===== ADMIN PANEL =====
+const ADMIN_PASSWORD = 'slicecraft2024'; // Change this password!
+const ADMIN_URL_PARAM = 'admin';
+const STORAGE_KEY = 'slicecraft_admin_data';
+
+// Load saved data from localStorage
+function adminLoadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function adminSaveData(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+// Apply saved data to page
+function adminApplyData(data) {
+  if (!data) return;
+  // Promo banner
+  if (data.promoEnabled && data.promoText) {
+    document.getElementById('promoBannerText').textContent = data.promoText;
+    document.getElementById('promoBanner').style.display = 'block';
+  }
+  // Store info
+  if (data.hours) document.getElementById('storeHours').textContent = data.hours;
+  if (data.address) document.getElementById('storeAddress').textContent = data.address;
+  if (data.phone) document.getElementById('storePhone').textContent = data.phone;
+  // Menu items override
+  if (data.menuItems && data.menuItems.length > 0) {
+    allMenuItems = data.menuItems;
+    renderMenu(allMenuItems);
+  }
+}
+
+// Check for ?admin URL param
+function adminCheckURL() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has(ADMIN_URL_PARAM)) {
+    setTimeout(adminOpen, 600);
+  }
+}
+
+// Show admin button on hover in corner
+document.getElementById('adminTrigger').addEventListener('mouseenter', function() {
+  this.style.opacity = '0.6';
+});
+
+function adminOpen() {
+  const overlay = document.getElementById('adminOverlay');
+  overlay.classList.add('open');
+  document.getElementById('adminLogin').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminPanel').classList.remove('open');
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminLoginError').textContent = '';
+  setTimeout(() => document.getElementById('adminPwInput').focus(), 100);
+}
+
+function adminClose() {
+  document.getElementById('adminOverlay').classList.remove('open');
+}
+
+document.getElementById('adminOverlay').addEventListener('click', function(e) {
+  if (e.target === this) adminClose();
+});
+
+document.getElementById('adminPwInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') adminLogin();
+});
+
+function adminLogin() {
+  const pw = document.getElementById('adminPwInput').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'flex';
+    document.getElementById('adminPanel').classList.add('open');
+    adminPopulatePanel();
+  } else {
+    const input = document.getElementById('adminPwInput');
+    input.classList.add('shake');
+    document.getElementById('adminLoginError').textContent = 'Incorrect password';
+    setTimeout(() => { input.classList.remove('shake'); input.value = ''; input.focus(); }, 500);
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// Populate admin panel with current values
+function adminPopulatePanel() {
+  const data = adminLoadData() || {};
+  // Promo
+  document.getElementById('promoEnabled').checked = !!data.promoEnabled;
+  document.getElementById('promoText').value = data.promoText || '';
+  document.getElementById('promoPreview').textContent = data.promoText || 'Your message here';
+  document.getElementById('promoText').addEventListener('input', function() {
+    document.getElementById('promoPreview').textContent = this.value || 'Your message here';
+  });
+  // Hours
+  document.getElementById('adminHours').value = data.hours || document.getElementById('storeHours').textContent;
+  document.getElementById('adminAddress').value = data.address || document.getElementById('storeAddress').textContent;
+  document.getElementById('adminPhone').value = data.phone || document.getElementById('storePhone').textContent;
+  // Menu
+  adminRenderMenuList(data.menuItems || allMenuItems);
+}
+
+const CAT_OPTIONS = [
+  {val:'cakes_pies', label:'Cakes & Pies'},
+  {val:'cheesecake', label:'Cheesecake'},
+  {val:'tarts', label:'Tarts'},
+  {val:'sourdough', label:'Sourdough'},
+  {val:'drinks', label:'Drinks'},
+  {val:'sans_rival', label:'Sans Rival'},
+];
+
+function adminRenderMenuList(items) {
+  const list = document.getElementById('menuAdminList');
+  list.innerHTML = items.map((item, i) => `
+    <div class="menu-admin-item" data-idx="${i}">
+      <input type="text" value="${escHtml(item.name)}" placeholder="Item name" data-field="name">
+      <input type="text" value="${escHtml(item.price)}" placeholder="Price" data-field="price" style="max-width:90px">
+      <select data-field="category">
+        ${CAT_OPTIONS.map(o => `<option value="${o.val}" ${item.category===o.val?'selected':''}>${o.label}</option>`).join('')}
+      </select>
+      <input type="text" value="${escHtml(item.description||'')}" placeholder="Description…" data-field="description" style="min-width:180px">
+      <button class="menu-delete-btn" onclick="adminDeleteItem(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function adminCollectMenuItems() {
+  const rows = document.querySelectorAll('#menuAdminList .menu-admin-item');
+  return Array.from(rows).map(row => ({
+    name: row.querySelector('[data-field="name"]').value.trim(),
+    price: row.querySelector('[data-field="price"]').value.trim(),
+    category: row.querySelector('[data-field="category"]').value,
+    description: row.querySelector('[data-field="description"]').value.trim(),
+  })).filter(item => item.name);
+}
+
+function adminDeleteItem(idx) {
+  const items = adminCollectMenuItems();
+  items.splice(idx, 1);
+  adminRenderMenuList(items);
+}
+
+function adminAddItem() {
+  const items = adminCollectMenuItems();
+  items.push({ name: 'New Item', price: '150', category: 'cakes_pies', description: 'Freshly made daily.' });
+  adminRenderMenuList(items);
+  // Scroll to bottom of list
+  const list = document.getElementById('menuAdminList');
+  setTimeout(() => list.lastElementChild && list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+function adminSave() {
+  const btn = document.querySelector('.admin-save-btn');
+  const status = document.getElementById('adminSaveStatus');
+  const menuItems = adminCollectMenuItems();
+  const data = {
+    promoEnabled: document.getElementById('promoEnabled').checked,
+    promoText: document.getElementById('promoText').value.trim(),
+    hours: document.getElementById('adminHours').value.trim(),
+    address: document.getElementById('adminAddress').value.trim(),
+    phone: document.getElementById('adminPhone').value.trim(),
+    menuItems,
+  };
+  adminSaveData(data);
+  adminApplyData(data);
+  btn.textContent = 'SAVED ✓';
+  btn.style.background = '#7dd';
+  status.textContent = 'Changes saved & applied!';
+  status.className = 'admin-save-status success';
+  setTimeout(() => {
+    btn.textContent = 'SAVE CHANGES';
+    btn.style.background = '';
+    status.textContent = '';
+    status.className = 'admin-save-status';
+  }, 2500);
+}
+
+// On page load: apply saved data + check URL
+document.addEventListener('DOMContentLoaded', function() {
+  const saved = adminLoadData();
+  // Wait for menu to render first
+  setTimeout(() => adminApplyData(saved), 3000);
+});
+adminCheckURL();
 </script>
 </body>
-</html>
